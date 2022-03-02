@@ -1,9 +1,11 @@
 import os
+from pickle import TRUE
+from xmlrpc.client import Boolean
 from flask import Flask ,request , jsonify
 from http import HTTPStatus
 from pathlib import Path
 from app.products_package.product_service import (
-    update_id_of_products, validate_id
+ validate_id
 )
 from app.csv_package.csv_module import (
     create_csv_file,
@@ -35,7 +37,9 @@ def get_products():
     try:
         page = paginate_products_in_csv(args, products)
     except IndexError:
-        return {"error": "the page does not exist"}, HTTPStatus.BAD_REQUEST
+        return {
+            "error": f"The current page exceeds the product count limit which is {len(products)}."
+        }, HTTPStatus.BAD_REQUEST
 
     return jsonify(page), HTTPStatus.OK
 
@@ -66,12 +70,12 @@ def post_product():
         validate_keys(body_req, expected_keys)
     except KeyError as e:
         return e.args[0], HTTPStatus.BAD_REQUEST
+    else:
+        body_req['id'] = (int(products[-1::][0]["id"])+1)
 
-    body_req['id'] = len(list(products))+1
+        write_product_in_csv(body_req)
 
-    write_product_in_csv(body_req)
-
-    return body_req, HTTPStatus.CREATED
+        return body_req, HTTPStatus.CREATED
 
 
 @app.patch('/products/<int:product_id>')
@@ -103,11 +107,14 @@ def delete_product(product_id):
     except IndexError:
         return {"error": "product id not found"}, HTTPStatus.BAD_REQUEST
     else:
-        new_products = update_id_of_products(
-            [p for p in products if p["id"] != product_id]
+        new_list = [p for p in products if p["id"] != product_id]
+
+        rewrite_product_in_csv(new_list)
+
+        product = [p for p in products if p["id"] == product_id][0]
+        product.update(
+            {"id": int(product['id']), "price": float(product['price'])}
         )
-        rewrite_product_in_csv(new_products)
-        product = products[(int(product_id) -1)]
 
         return product, HTTPStatus.OK
 

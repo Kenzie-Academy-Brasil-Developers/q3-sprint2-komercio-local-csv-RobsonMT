@@ -1,6 +1,4 @@
 from csv import DictReader, DictWriter
-from email.policy import default
-from http import HTTPStatus
 import os
 from flask import Request
 import csv
@@ -14,7 +12,6 @@ def create_csv_file():
         fieldnames = csv_products.fieldnames
 
         with open(FILEPATH, "w") as csv_outfile:
-
             writer = DictWriter(csv_outfile, fieldnames)
 
             writer.writeheader()
@@ -23,8 +20,8 @@ def create_csv_file():
 
 def validate_keys(payload: dict, expected_keys: set):
     body_keys_set = set(payload.keys())
-
-    invalid_keys = body_keys_set.difference(expected_keys)
+    
+    invalid_keys = expected_keys.difference(body_keys_set)
 
     if invalid_keys:
         raise KeyError(
@@ -94,9 +91,6 @@ def paginate_products_in_csv(args, products: list[dict]) -> list:
 
     products_page = list()
 
-    if (end > (len(products))): 
-        raise IndexError
- 
     for i, product in enumerate(products):
 
         if not args:
@@ -104,6 +98,9 @@ def paginate_products_in_csv(args, products: list[dict]) -> list:
                 products_page.append(product)
         elif i >= start and i < end:
             products_page.append(product)
+    
+    if not products_page: 
+        raise IndexError
        
     return products_page
 
